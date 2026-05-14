@@ -1,0 +1,5 @@
+# Streamlit runtime config. Adjustable knobs for the upload widget live here.
+[server]
+# Max size (MB) accepted by st.file_uploader. Shown as "Nmb per file" on the
+# widget. Keep this >= src/config.py:MAX_FILE_SIZE_MB.
+maxUploadSize = 200

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual envs
+.venv
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Secrets / env
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.claude/
+
+# Streamlit — keep config.toml, ignore only secrets
+.streamlit/secrets.toml
+
+# Capture files (keep demo as the one sample)
+*.pcap
+*.pcapng
+*.cap
+!sample_data/demo.pcap
+
+# Runtime uploads
+uploads/
