@@ -50,7 +50,7 @@ REFRESH_INTERVAL_SECONDS = 1.0
 def live_page() -> None:
     _init_live_state()
 
-    st.title("pcap-insight - Live")
+    st.title("PcapLens - Live")
     st.caption("Capture live traffic with tshark or Scapy and inspect it as packets arrive.")
 
     session = _get_session()

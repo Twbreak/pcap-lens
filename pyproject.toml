@@ -1,5 +1,5 @@
 [project]
-name = "pcap-insight"
+name = "pcap-lens"
 version = "0.5.0"
 description = "Upload pcap files and get instant traffic summaries and charts"
 requires-python = ">=3.11"

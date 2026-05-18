@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="pcap-insight",
+    page_title="PcapLens",
     page_icon="🔍",
     layout="wide",
 )

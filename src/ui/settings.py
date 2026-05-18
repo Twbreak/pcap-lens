@@ -38,7 +38,7 @@ def get_top_n() -> int:
 def settings_page() -> None:
     init_settings()
 
-    st.title("pcap-insight - Settings")
+    st.title("PcapLens - Settings")
     st.caption("Tune parser behavior and display limits for the current session.")
 
     _render_parser_settings()

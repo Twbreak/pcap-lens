@@ -59,7 +59,7 @@ def _cached_transform(
 
 def analyze_page() -> None:
     """Single-file analysis: upload one pcap, filter, summarise, chart, export."""
-    st.title("pcap-insight — Analyze")
+    st.title("PcapLens — Analyze")
     st.caption("Upload a .pcap file to get instant traffic summaries and charts.")
 
     uploaded = st.file_uploader("Choose a .pcap file", type=["pcap"])
@@ -102,7 +102,7 @@ def analyze_page() -> None:
 
 def compare_page() -> None:
     """Multi-file comparison: upload two or more pcaps and compare them side by side."""
-    st.title("pcap-insight — Compare")
+    st.title("PcapLens — Compare")
     st.caption("Upload two or more .pcap files to compare their traffic side by side.")
 
     uploaded = st.file_uploader(

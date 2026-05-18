@@ -1,4 +1,4 @@
-# pcap-insight
+# PcapLens
 
 A lightweight Python tool that lets you upload a `.pcap` file and instantly get traffic summaries and interactive charts.
 
@@ -38,8 +38,8 @@ A lightweight Python tool that lets you upload a `.pcap` file and instantly get 
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/pcap-insight.git
-cd pcap-insight
+git clone https://github.com/your-username/pcap-lens.git
+cd pcap-lens
 
 python3 -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
@@ -52,6 +52,8 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
+uv run streamlit run app.py
+# OR 
 streamlit run app.py
 ```
 
@@ -64,7 +66,7 @@ A sample file is provided at `sample_data/demo.pcap` to try it out immediately.
 ## Project Structure
 
 ```
-pcap-insight/
+pcap-lens/
 ├─ app.py                  # Streamlit entry point — navigation router
 ├─ src/
 │  ├─ config.py            # Centralised settings
