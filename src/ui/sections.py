@@ -14,6 +14,7 @@ from src.analysis.export import to_csv_bytes, to_json_bytes
 from src.analysis.insights import TrafficInsight
 from src.analysis.summary import TrafficSummary
 from src.config import TABLE_DEFAULT_ROWS
+from src.core.schemas import PacketFilters
 from src.transform.filters import available_protocols, filter_packets
 from src.ui.i18n import t
 
@@ -26,28 +27,33 @@ def render_parser_backend(backend: str) -> None:
     st.caption(t("sections.parser_backend", backend=backend))
 
 
-def render_filter_sidebar(df: pl.DataFrame) -> pl.DataFrame:
+def render_filter_sidebar(df: pl.DataFrame) -> tuple[pl.DataFrame, PacketFilters]:
     """Render filter controls in the sidebar and return the filtered DataFrame."""
     st.sidebar.header(t("sections.filters"))
 
     if df.is_empty():
         st.sidebar.info(t("sections.no_packets_filter"))
-        return df
+        return df, PacketFilters()
 
     protocols = available_protocols(df)
     selected = st.sidebar.multiselect(t("sections.protocol"), protocols, default=protocols)
     src_ip = st.sidebar.text_input(t("sections.src_ip_contains"))
     dst_ip = st.sidebar.text_input(t("sections.dst_ip_contains"))
-
-    filtered = filter_packets(
-        df,
-        protocols=selected,
+    filters = PacketFilters(
+        protocols=tuple(selected),
         src_ip=src_ip.strip() or None,
         dst_ip=dst_ip.strip() or None,
     )
 
+    filtered = filter_packets(
+        df,
+        protocols=list(filters.protocols) if filters.protocols is not None else None,
+        src_ip=filters.src_ip,
+        dst_ip=filters.dst_ip,
+    )
+
     st.sidebar.caption(t("sections.showing_packets", filtered=len(filtered), total=len(df)))
-    return filtered
+    return filtered, filters
 
 
 def render_parse_warning(failed: int) -> None:

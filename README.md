@@ -194,10 +194,13 @@ pytest
 - [x] Add translation helper with English fallback
 - [x] Apply translations to navigation, Analyze, Compare, Live, Settings, and chart labels
 
-**v0.6** — planned
-- [ ] Add professional HTML / Markdown report export
-- [ ] Include summary, charts, insights, and packet samples
+**v0.6** ✓ complete
+- [x] Add core API boundary for parsed captures, filters, analysis, and comparison
+- [x] Route Analyze, Compare, and Live pages through the core service layer
+- [x] Add service-level contract tests for future parser/backend replacements
 
 **Future**
+- Add professional HTML / Markdown report export
+- Include summary, charts, insights, and packet samples
 - REST API
 - Suspicious traffic hints

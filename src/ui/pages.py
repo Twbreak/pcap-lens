@@ -1,14 +1,10 @@
-import io
-
 import streamlit as st
 
-from src.analysis.compare import build_comparison_table, build_relative_traffic
 from src.analysis.context import detect_local_ips
-from src.analysis.insights import generate_insights
-from src.analysis.summary import compute_summary
+from src.core.schemas import AnalyzeOptions, CaptureInput
+from src.core.service import analyze_packets, compare_captures, load_capture
 from src.ingest.upload import validate_upload
-from src.parser.pcap_parser import parse_pcap_with_backend
-from src.transform.packet_table import SCHEMA, records_to_dataframe
+from src.transform.packet_table import SCHEMA
 from src.ui.i18n import t
 from src.ui.sections import (
     render_charts,
@@ -36,26 +32,11 @@ _SCHEMA_KEY = ",".join(SCHEMA.keys())
 
 
 @st.cache_data(show_spinner="Parsing pcap…")
-def _cached_parse(data: bytes, name: str, backend_preference: str):
-    buf = io.BytesIO(data)
-    buf.name = name
-    return parse_pcap_with_backend(buf, backend_preference=backend_preference)
-
-
-@st.cache_data(show_spinner=False)
-def _cached_transform(
-    data: bytes,
-    name: str,
-    backend_preference: str,
-    schema_key: str = _SCHEMA_KEY,
-):
-    """Parse + transform once per file; filters are applied downstream on the result.
-
-    `schema_key` is part of the cache key so a schema change forces a re-run.
-    """
-    records, failed, backend = _cached_parse(data, name, backend_preference)
-    df = records_to_dataframe(records)
-    return df, failed, backend
+def _cached_load_capture(data: bytes, name: str, backend_preference: str, schema_key: str):
+    return load_capture(
+        CaptureInput(data=data, name=name),
+        backend_preference=backend_preference,
+    )
 
 
 def analyze_page() -> None:
@@ -78,27 +59,35 @@ def analyze_page() -> None:
     render_upload_info(file.name, file.size_mb)
 
     try:
-        df, failed, backend = _cached_transform(
+        capture = _cached_load_capture(
             file.data,
             file.name,
             get_parser_backend_preference(),
+            _SCHEMA_KEY,
         )
     except Exception as exc:
         st.error(t("analyze.parse_error", error=exc))
         return
 
-    render_parser_backend(backend)
-    render_parse_warning(failed)
+    render_parser_backend(capture.parser_backend)
+    render_parse_warning(capture.failed_packets)
 
-    filtered_df = render_filter_sidebar(df)
-    summary = compute_summary(filtered_df, top_n=get_top_n())
+    _filtered_preview, filters = render_filter_sidebar(capture.packets)
+    result = analyze_packets(
+        capture,
+        filters=filters,
+        options=AnalyzeOptions(
+            top_n=get_top_n(),
+            local_ips=frozenset(detect_local_ips()),
+        ),
+    )
 
-    render_summary_cards(summary)
-    render_insights(generate_insights(summary, local_ips=detect_local_ips()))
-    render_charts(summary, filtered_df)
-    render_dns_http_section(summary)
-    render_packet_table(filtered_df, row_limit=get_packet_table_rows())
-    render_export_section(filtered_df)
+    render_summary_cards(result.summary)
+    render_insights(result.insights)
+    render_charts(result.summary, result.filtered_packets)
+    render_dns_http_section(result.summary)
+    render_packet_table(result.filtered_packets, row_limit=get_packet_table_rows())
+    render_export_section(result.filtered_packets)
 
 
 def compare_page() -> None:
@@ -114,8 +103,7 @@ def compare_page() -> None:
         st.info(t("compare.upload_prompt"))
         return
 
-    named_summaries = []
-    named_dfs = []
+    captures = []
 
     for up in uploaded:
         try:
@@ -124,23 +112,28 @@ def compare_page() -> None:
             st.error(f"{up.name}: {exc}")
             continue
         try:
-            df, failed, backend = _cached_transform(
+            capture = _cached_load_capture(
                 file.data,
                 file.name,
                 get_parser_backend_preference(),
+                _SCHEMA_KEY,
             )
         except Exception as exc:
             st.error(t("compare.file_parse_error", name=up.name, error=exc))
             continue
-        st.caption(t("compare.backend_caption", name=file.name, backend=backend))
-        if failed:
-            st.warning(t("compare.skipped_packets", name=file.name, count=failed))
-        named_dfs.append((file.name, df))
-        named_summaries.append((file.name, compute_summary(df, top_n=get_top_n())))
+        st.caption(
+            t("compare.backend_caption", name=capture.name, backend=capture.parser_backend)
+        )
+        if capture.failed_packets:
+            st.warning(
+                t("compare.skipped_packets", name=capture.name, count=capture.failed_packets)
+            )
+        captures.append(capture)
 
-    if len(named_summaries) < 2:
+    if len(captures) < 2:
         st.warning(t("compare.need_two_files"))
         return
 
-    render_comparison_table(build_comparison_table(named_summaries))
-    render_comparison_charts(named_summaries, build_relative_traffic(named_dfs))
+    result = compare_captures(captures, top_n=get_top_n())
+    render_comparison_table(result.table)
+    render_comparison_charts(result.summaries, result.relative_traffic)

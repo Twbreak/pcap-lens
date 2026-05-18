@@ -4,8 +4,6 @@ import time
 import streamlit as st
 
 from src.analysis.context import detect_local_ips
-from src.analysis.insights import generate_insights
-from src.analysis.summary import compute_summary
 from src.capture.live_capture import (
     CaptureInterface,
     LiveCaptureSession,
@@ -20,6 +18,8 @@ from src.capture.live_capture import (
     start_live_capture,
     stop_live_capture,
 )
+from src.core.schemas import AnalyzeOptions, LoadedCapture
+from src.core.service import analyze_packets
 from src.domain.models import PacketRecord
 from src.transform.packet_table import records_to_dataframe
 from src.ui.i18n import t
@@ -255,14 +255,26 @@ def _render_status(running: bool) -> None:
 def _render_live_data() -> None:
     records = _get_records()
     df = records_to_dataframe(records)
-    filtered_df = render_filter_sidebar(df)
-    summary = compute_summary(filtered_df, top_n=get_top_n())
+    _filtered_preview, filters = render_filter_sidebar(df)
+    result = analyze_packets(
+        LoadedCapture(
+            name="live",
+            packets=df,
+            failed_packets=st.session_state[LIVE_FAILED_KEY],
+            parser_backend=_get_session().backend if _get_session() is not None else "none",
+        ),
+        filters=filters,
+        options=AnalyzeOptions(
+            top_n=get_top_n(),
+            local_ips=frozenset(detect_local_ips()),
+        ),
+    )
 
-    render_summary_cards(summary)
-    render_insights(generate_insights(summary, local_ips=detect_local_ips()))
-    render_charts(summary, filtered_df)
-    render_dns_http_section(summary)
-    render_packet_table(filtered_df, row_limit=get_packet_table_rows())
+    render_summary_cards(result.summary)
+    render_insights(result.insights)
+    render_charts(result.summary, result.filtered_packets)
+    render_dns_http_section(result.summary)
+    render_packet_table(result.filtered_packets, row_limit=get_packet_table_rows())
 
 
 def _get_session() -> LiveCaptureSession | None:
