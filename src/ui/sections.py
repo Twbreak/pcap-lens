@@ -15,28 +15,29 @@ from src.analysis.insights import TrafficInsight
 from src.analysis.summary import TrafficSummary
 from src.config import TABLE_DEFAULT_ROWS
 from src.transform.filters import available_protocols, filter_packets
+from src.ui.i18n import t
 
 
 def render_upload_info(filename: str, size_mb: float) -> None:
-    st.success(f"Loaded **{filename}** ({size_mb:.2f} MB)")
+    st.success(t("sections.loaded", filename=filename, size_mb=size_mb))
 
 
 def render_parser_backend(backend: str) -> None:
-    st.caption(f"Parser backend: `{backend}`")
+    st.caption(t("sections.parser_backend", backend=backend))
 
 
 def render_filter_sidebar(df: pl.DataFrame) -> pl.DataFrame:
     """Render filter controls in the sidebar and return the filtered DataFrame."""
-    st.sidebar.header("Filters")
+    st.sidebar.header(t("sections.filters"))
 
     if df.is_empty():
-        st.sidebar.info("No packets to filter.")
+        st.sidebar.info(t("sections.no_packets_filter"))
         return df
 
     protocols = available_protocols(df)
-    selected = st.sidebar.multiselect("Protocol", protocols, default=protocols)
-    src_ip = st.sidebar.text_input("Source IP contains")
-    dst_ip = st.sidebar.text_input("Destination IP contains")
+    selected = st.sidebar.multiselect(t("sections.protocol"), protocols, default=protocols)
+    src_ip = st.sidebar.text_input(t("sections.src_ip_contains"))
+    dst_ip = st.sidebar.text_input(t("sections.dst_ip_contains"))
 
     filtered = filter_packets(
         df,
@@ -45,41 +46,62 @@ def render_filter_sidebar(df: pl.DataFrame) -> pl.DataFrame:
         dst_ip=dst_ip.strip() or None,
     )
 
-    st.sidebar.caption(f"Showing {len(filtered):,} of {len(df):,} packets")
+    st.sidebar.caption(t("sections.showing_packets", filtered=len(filtered), total=len(df)))
     return filtered
 
 
 def render_parse_warning(failed: int) -> None:
     if failed > 0:
-        st.warning(f"{failed} packet(s) could not be parsed and were skipped.")
+        st.warning(t("sections.parse_warning", count=failed))
 
 
 def render_summary_cards(summary: TrafficSummary) -> None:
-    st.subheader("Traffic Summary")
+    st.subheader(t("sections.traffic_summary"))
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Packets", f"{summary.total_packets:,}")
-    col2.metric("Total Bytes", _fmt_bytes(summary.total_bytes))
-    col3.metric("Duration", f"{summary.duration_seconds:.2f}s")
+    col1.metric(t("sections.total_packets"), f"{summary.total_packets:,}")
+    col2.metric(t("sections.total_bytes"), _fmt_bytes(summary.total_bytes))
+    col3.metric(t("sections.duration"), f"{summary.duration_seconds:.2f}s")
 
     col4, col5 = st.columns(2)
-    col4.metric("Unique Source IPs", summary.unique_src_ips)
-    col5.metric("Unique Destination IPs", summary.unique_dst_ips)
+    col4.metric(t("sections.unique_src_ips"), summary.unique_src_ips)
+    col5.metric(t("sections.unique_dst_ips"), summary.unique_dst_ips)
 
 
 def render_insights(insights: list[TrafficInsight]) -> None:
-    st.subheader("Insights")
+    st.subheader(t("sections.insights"))
 
     for insight in insights:
+        title, evidence, action = _localize_insight(insight)
         with st.container(border=True):
-            st.markdown(f"**{insight.title}**")
-            st.caption(f"Severity: `{insight.severity}`")
-            st.write(insight.evidence)
-            st.caption(insight.action)
+            st.markdown(f"**{title}**")
+            st.caption(t("sections.severity", severity=t(f"severity.{insight.severity}")))
+            st.write(evidence)
+            st.caption(action)
+
+
+def _localize_insight(insight: TrafficInsight) -> tuple[str, str, str]:
+    if not insight.message_key:
+        return insight.title, insight.evidence, insight.action
+
+    params = dict(insight.message_params)
+    if insight.message_key == "http_activity":
+        params["methods_text"] = (
+            t("insight.http_activity.methods", methods=params["methods"])
+            if params.get("methods")
+            else ""
+        )
+
+    prefix = f"insight.{insight.message_key}"
+    return (
+        t(f"{prefix}.title", **params),
+        t(f"{prefix}.evidence", **params),
+        t(f"{prefix}.action", **params),
+    )
 
 
 def render_charts(summary: TrafficSummary, df: pl.DataFrame) -> None:
-    st.subheader("Charts")
+    st.subheader(t("sections.charts"))
 
     st.plotly_chart(protocol_distribution_chart(summary), use_container_width=True)
 
@@ -94,19 +116,19 @@ def render_charts(summary: TrafficSummary, df: pl.DataFrame) -> None:
 
 
 def render_dns_http_section(summary: TrafficSummary) -> None:
-    st.subheader("DNS / HTTP")
+    st.subheader(t("sections.dns_http"))
 
     has_dns = bool(summary.top_dns_queries)
     has_http = bool(summary.top_http_hosts) or bool(summary.http_method_distribution)
 
     if not has_dns and not has_http:
-        st.info("No DNS or HTTP traffic detected in this capture.")
+        st.info(t("sections.no_dns_http"))
         return
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**Top DNS Queries**")
+        st.markdown(f"**{t('sections.top_dns_queries')}**")
         if has_dns:
             st.dataframe(
                 pl.DataFrame(
@@ -116,10 +138,10 @@ def render_dns_http_section(summary: TrafficSummary) -> None:
                 hide_index=True,
             )
         else:
-            st.caption("No DNS queries.")
+            st.caption(t("sections.no_dns_queries"))
 
     with col2:
-        st.markdown("**Top HTTP Hosts**")
+        st.markdown(f"**{t('sections.top_http_hosts')}**")
         if summary.top_http_hosts:
             st.dataframe(
                 pl.DataFrame(
@@ -129,20 +151,18 @@ def render_dns_http_section(summary: TrafficSummary) -> None:
                 hide_index=True,
             )
         else:
-            st.caption("No HTTP hosts.")
+            st.caption(t("sections.no_http_hosts"))
 
     if summary.http_method_distribution:
-        methods = " · ".join(
-            f"{m}: {c}" for m, c in summary.http_method_distribution.items()
-        )
-        st.caption(f"HTTP methods — {methods}")
+        methods = " · ".join(f"{m}: {c}" for m, c in summary.http_method_distribution.items())
+        st.caption(t("sections.http_methods", methods=methods))
 
 
 def render_packet_table(df: pl.DataFrame, row_limit: int = TABLE_DEFAULT_ROWS) -> None:
-    st.subheader(f"Packet Table (first {row_limit} rows)")
+    st.subheader(t("sections.packet_table", row_limit=row_limit))
 
     if df.is_empty():
-        st.info("No packets to display.")
+        st.info(t("sections.no_packets_display"))
         return
 
     display_df = df.head(row_limit).with_columns(
@@ -152,23 +172,23 @@ def render_packet_table(df: pl.DataFrame, row_limit: int = TABLE_DEFAULT_ROWS) -
 
 
 def render_export_section(df: pl.DataFrame) -> None:
-    st.subheader("Export")
+    st.subheader(t("sections.export"))
 
     if df.is_empty():
-        st.info("Nothing to export.")
+        st.info(t("sections.nothing_to_export"))
         return
 
-    st.caption(f"Export all {len(df):,} filtered packets.")
+    st.caption(t("sections.export_all", count=len(df)))
     col1, col2 = st.columns(2)
     col1.download_button(
-        "Download CSV",
+        t("sections.download_csv"),
         data=to_csv_bytes(df),
         file_name="packets.csv",
         mime="text/csv",
         use_container_width=True,
     )
     col2.download_button(
-        "Download JSON",
+        t("sections.download_json"),
         data=to_json_bytes(df),
         file_name="packets.json",
         mime="application/json",
@@ -177,20 +197,14 @@ def render_export_section(df: pl.DataFrame) -> None:
 
 
 def render_comparison_table(table: pl.DataFrame) -> None:
-    st.subheader("Metrics Comparison")
+    st.subheader(t("sections.metrics_comparison"))
     st.dataframe(table.to_pandas(), use_container_width=True, hide_index=True)
 
 
-def render_comparison_charts(
-    named_summaries: list, relative_traffic: pl.DataFrame
-) -> None:
-    st.subheader("Comparison Charts")
-    st.plotly_chart(
-        comparison_protocol_chart(named_summaries), use_container_width=True
-    )
-    st.plotly_chart(
-        comparison_traffic_chart(relative_traffic), use_container_width=True
-    )
+def render_comparison_charts(named_summaries: list, relative_traffic: pl.DataFrame) -> None:
+    st.subheader(t("sections.comparison_charts"))
+    st.plotly_chart(comparison_protocol_chart(named_summaries), use_container_width=True)
+    st.plotly_chart(comparison_traffic_chart(relative_traffic), use_container_width=True)
 
 
 def _fmt_bytes(n: int) -> str:

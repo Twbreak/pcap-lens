@@ -9,6 +9,8 @@ class TrafficInsight:
     title: str
     evidence: str
     action: str
+    message_key: str = ""
+    message_params: tuple[tuple[str, object], ...] = ()
 
 
 def generate_insights(
@@ -24,6 +26,7 @@ def generate_insights(
                 title="No packets to inspect",
                 evidence="The current view contains 0 packets.",
                 action="Upload a capture, start live capture, or loosen active filters.",
+                message_key="no_packets",
             )
         ]
 
@@ -42,6 +45,8 @@ def generate_insights(
                 title="No notable traffic patterns detected",
                 evidence=f"Reviewed {summary.total_packets:,} packets with current rules.",
                 action="Use filters or inspect the packet table for protocol-specific details.",
+                message_key="no_notable_patterns",
+                message_params=(("total_packets", summary.total_packets),),
             )
         )
     return insights
@@ -62,6 +67,8 @@ def _top_talker(summary: TrafficSummary) -> list[TrafficInsight]:
             title="One source dominates the capture",
             evidence=f"{ip} sent {count:,} packets ({share:.1f}% of this view).",
             action=f"Filter source IP contains {ip} and inspect destinations and ports.",
+            message_key="top_talker",
+            message_params=(("ip", ip), ("count", count), ("share", share)),
         )
     ]
 
@@ -85,9 +92,10 @@ def _top_destination(summary: TrafficSummary, local_ips: set[str]) -> list[Traff
                     f"({share:.1f}% of this view)."
                 ),
                 action=(
-                    "Review top source IPs and destination ports to understand "
-                    "inbound services."
+                    "Review top source IPs and destination ports to understand " "inbound services."
                 ),
+                message_key="inbound_to_local",
+                message_params=(("ip", ip), ("count", count), ("share", share)),
             )
         ]
 
@@ -97,6 +105,8 @@ def _top_destination(summary: TrafficSummary, local_ips: set[str]) -> list[Traff
             title="Traffic concentrates on one destination",
             evidence=f"{ip} received {count:,} packets ({share:.1f}% of this view).",
             action=f"Filter destination IP contains {ip} and review protocols involved.",
+            message_key="top_destination",
+            message_params=(("ip", ip), ("count", count), ("share", share)),
         )
     ]
 
@@ -113,6 +123,8 @@ def _dns_activity(summary: TrafficSummary) -> list[TrafficInsight]:
             title="DNS queries are present",
             evidence=f"Top DNS query is {query} with {count:,} occurrence(s).",
             action=f"Review repeated DNS lookups for {query}; UDP packets in view: {dns_count:,}.",
+            message_key="dns_activity",
+            message_params=(("query", query), ("count", count), ("dns_count", dns_count)),
         )
     ]
 
@@ -139,6 +151,8 @@ def _http_activity(summary: TrafficSummary) -> list[TrafficInsight]:
             title="HTTP request traffic detected",
             evidence=evidence,
             action="Inspect HTTP hosts and methods before sharing captures externally.",
+            message_key="http_activity",
+            message_params=(("host_text", host_text), ("methods", methods)),
         )
     ]
 
@@ -159,6 +173,8 @@ def _tcp_resets(summary: TrafficSummary) -> list[TrafficInsight]:
                 "Check whether resets align with failed connections, blocked ports, "
                 "or service restarts."
             ),
+            message_key="tcp_resets",
+            message_params=(("resets", resets), ("share", share)),
         )
     ]
 
@@ -178,6 +194,8 @@ def _high_port_activity(summary: TrafficSummary) -> list[TrafficInsight]:
                 "Confirm whether this is expected ephemeral-port or "
                 "application-specific traffic."
             ),
+            message_key="high_port_activity",
+            message_params=(("port", port), ("count", count)),
         )
     ]
 

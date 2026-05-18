@@ -18,6 +18,7 @@ A lightweight Python tool that lets you upload a `.pcap` file and instantly get 
 - Live capture mode powered by `tshark` or Scapy
 - Download stopped live captures as `.pcap`
 - Explainable traffic insights with severity, evidence, and suggested action
+- English / Traditional Chinese UI language selection
 - Parse-once caching — fast re-renders after initial load
 
 ---
@@ -106,7 +107,7 @@ The app has two pages, switchable from the sidebar:
 - **Analyze** — single-file analysis: filters, summary, charts, packet table, export
 - **Compare** — upload two or more `.pcap` files and compare metrics and charts side by side
 - **Live** — capture from a local interface with `tshark` or Scapy and inspect rolling traffic
-- **Settings** — choose parser backend, display limits, cache controls, environment status
+- **Settings** — choose UI language, parser backend, display limits, cache controls, environment status
 
 ---
 
@@ -170,10 +171,11 @@ pytest
 - [x] Make destination concentration insights local-IP aware
 - [x] Add tests for insight rules
 
-**v0.5.1** — planned
-- [ ] Improve Live capture readiness and permission guidance
-- [ ] Add capture filter examples
-- [ ] Add capture summary after Stop
+**v0.5.1** ✓ complete
+- [x] Add language preference in Settings
+- [x] Support English and Traditional Chinese UI labels
+- [x] Add translation helper with English fallback
+- [x] Apply translations to navigation, Analyze, Compare, Live, Settings, and chart labels
 
 **v0.6** — planned
 - [ ] Add professional HTML / Markdown report export

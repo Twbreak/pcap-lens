@@ -22,6 +22,7 @@ from src.capture.live_capture import (
 )
 from src.domain.models import PacketRecord
 from src.transform.packet_table import records_to_dataframe
+from src.ui.i18n import t
 from src.ui.sections import (
     render_charts,
     render_dns_http_section,
@@ -50,8 +51,8 @@ REFRESH_INTERVAL_SECONDS = 1.0
 def live_page() -> None:
     _init_live_state()
 
-    st.title("PcapLens - Live")
-    st.caption("Capture live traffic with tshark or Scapy and inspect it as packets arrive.")
+    st.title(t("live.title"))
+    st.caption(t("live.caption"))
 
     session = _get_session()
     if session is not None:
@@ -89,47 +90,47 @@ def _render_controls(running: bool) -> None:
 
     col1, col2, col3 = st.columns([2, 1, 1])
     selected = col1.selectbox(
-        "Interface",
+        t("live.interface"),
         interfaces,
         format_func=lambda iface: iface.label,
         disabled=running or not interfaces,
     )
     rolling_limit = col2.selectbox(
-        "Rolling packets",
+        t("live.rolling_packets"),
         ROLLING_LIMIT_OPTIONS,
         index=ROLLING_LIMIT_OPTIONS.index(DEFAULT_ROLLING_LIMIT),
         disabled=running,
     )
-    col3.caption(f"Actual backend: `{backend_status.backend}`")
+    col3.caption(t("live.actual_backend", backend=backend_status.backend))
     capture_filter = st.text_input(
-        "Capture filter",
+        t("live.capture_filter"),
         placeholder="tcp port 80",
         disabled=running,
     )
 
-    auto_refresh = st.checkbox("Auto-refresh", value=True, key="live_auto_refresh")
+    auto_refresh = st.checkbox(t("live.auto_refresh"), value=True, key="live_auto_refresh")
 
     start_col, stop_col, clear_col = st.columns(3)
     if start_col.button(
-        "Start",
+        t("live.start"),
         disabled=running or selected is None,
         use_container_width=True,
     ):
         _start_selected_capture(selected, capture_filter, rolling_limit, backend_preference)
         st.rerun()
 
-    if stop_col.button("Stop", disabled=not running, use_container_width=True):
+    if stop_col.button(t("live.stop"), disabled=not running, use_container_width=True):
         _stop_current_capture()
         st.rerun()
 
-    if clear_col.button("Clear", disabled=running, use_container_width=True):
+    if clear_col.button(t("live.clear"), disabled=running, use_container_width=True):
         _clear_live_data()
         st.rerun()
 
     if not interfaces:
-        st.warning(f"No {backend_status.backend} capture interfaces were found.")
+        st.warning(t("live.no_interfaces", backend=backend_status.backend))
     if not auto_refresh and running:
-        st.caption("Auto-refresh is off; use Streamlit rerun controls to refresh packets.")
+        st.caption(t("live.auto_refresh_off"))
 
 
 def _render_backend_selector(running: bool) -> str:
@@ -145,7 +146,7 @@ def _render_backend_selector(running: bool) -> str:
         (cols[1], "tshark", "tshark", not status.tshark_available),
         (cols[2], "Scapy", "scapy", not status.scapy_available),
     ]:
-        button_label = f"{label} selected" if current == value else label
+        button_label = t("settings.backend_selected", label=label) if current == value else label
         if column.button(
             button_label,
             key=f"live_backend_{value}",
@@ -157,7 +158,7 @@ def _render_backend_selector(running: bool) -> str:
             st.rerun()
 
     if not status.tshark_available:
-        st.caption("tshark is unavailable; Auto will use Scapy.")
+        st.caption(t("live.tshark_unavailable"))
     return st.session_state[LIVE_BACKEND_KEY]
 
 
@@ -165,7 +166,7 @@ def _load_interfaces(backend_preference: str) -> list[CaptureInterface]:
     try:
         return _cached_interfaces(backend_preference)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-        st.error(f"Failed to list capture interfaces: {exc}")
+        st.error(t("live.interface_error", error=exc))
         return []
 
 
@@ -229,25 +230,25 @@ def _render_status(running: bool) -> None:
     session = _get_session()
     records = _get_records()
 
-    status = "capturing" if running else "stopped"
-    st.caption(f"Status: `{status}`")
+    status = t("live.status_capturing") if running else t("live.status_stopped")
+    st.caption(t("live.status", status=status))
     render_parser_backend(session.backend if session is not None else "none")
 
     if session is not None:
-        st.caption(f"Interface: `{session.interface.label}`")
+        st.caption(t("live.interface_caption", interface=session.interface.label))
         if session.capture_filter:
-            st.caption(f"Capture filter: `{session.capture_filter}`")
+            st.caption(t("live.capture_filter_caption", capture_filter=session.capture_filter))
 
     if st.session_state[LIVE_FAILED_KEY]:
-        st.warning(f"{st.session_state[LIVE_FAILED_KEY]} live packet line(s) could not be parsed.")
+        st.warning(t("live.parse_warning", count=st.session_state[LIVE_FAILED_KEY]))
 
     errors = st.session_state[LIVE_ERRORS_KEY]
     if errors:
-        with st.expander("Capture messages"):
+        with st.expander(t("live.capture_messages")):
             for line in errors[-10:]:
                 st.code(line)
 
-    st.metric("Buffered Packets", f"{len(records):,}")
+    st.metric(t("live.buffered_packets"), f"{len(records):,}")
     _render_pcap_download()
 
 
@@ -288,7 +289,7 @@ def _render_pcap_download() -> None:
         return
 
     st.download_button(
-        "Download PCAP",
+        t("live.download_pcap"),
         data=data,
         file_name=st.session_state[LIVE_PCAP_FILENAME_KEY],
         mime="application/vnd.tcpdump.pcap",
