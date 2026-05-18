@@ -38,6 +38,17 @@ A lightweight Python tool that lets you upload a `.pcap` file and instantly get 
 
 ## Installation
 
+Using `uv`:
+
+```bash
+git clone https://github.com/your-username/pcap-lens.git
+cd pcap-lens
+
+uv sync
+```
+
+Or using `venv` and `pip`:
+
 ```bash
 git clone https://github.com/your-username/pcap-lens.git
 cd pcap-lens
@@ -52,9 +63,15 @@ pip install -r requirements.txt
 
 ## Usage
 
+Using `uv`:
+
 ```bash
 uv run streamlit run app.py
-# OR 
+```
+
+Or using `venv` and `pip`:
+
+```bash
 streamlit run app.py
 ```
 
